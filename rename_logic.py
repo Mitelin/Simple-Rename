@@ -1,5 +1,4 @@
 # import os
-from widget_logic import update_file_listbox
 from os import path, rename
 
 
@@ -86,4 +85,4 @@ def generate_string_chain(size):
 def file_list_update(file_list, new_file_list):
     file_list.clear()
     file_list.extend(new_file_list)
-    update_file_listbox(file_list)
+    # update_file_listbox(file_list)

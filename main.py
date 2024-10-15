@@ -1,9 +1,12 @@
-from window import create_main_window
+from window import Window
+from config import StaticConfig
 
 
 def main():
     # call for main window creation
-    create_main_window()
+    static_configuration = StaticConfig()
+    window = Window(static_configuration)
+    window.create_main_window()
 
 
 if __name__ == "__main__":
