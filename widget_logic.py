@@ -149,12 +149,12 @@ class Widget(DynamicConfig, StaticConfig):
             else:
                 widget.config(text=self.texts[self.current_lang][text_key])
 
+    # Create main instance of Log wiever and rechecks if everything exist / solve problems.
     def open_log_viewer(self):
-        # Vytvoříme instanci třídy Log a spustíme log viewer
         log = Log()
-        log.checklog()  # Zkontroluje existenci souboru a složky
-        log.create_ui()  # Vytvoří UI pro zobrazení logu
+        log.checklog()  # Recheck of log folder and files / fixes if they do not.
+        log.create_ui()  # Create main window UI
 
+    # This is called on end of the main window to close all the remaining windows and application.
     def on_closing(self, root):
-        # Tento blok se zavolá při zavření okna, aby byl soubor uzavřen a program ukončen
         sys.exit()

@@ -109,9 +109,11 @@ class Window(Rename, Widget):
         self.toggle_button = tk.Button(root, text="EN", command=self.toggle_language)
         self.toggle_button.place(x=550, y=1)
 
+        # Button for opening the log wiever
         self.open_log_button = tk.Button(root, text="Log", command=self.open_log_viewer)
         self.open_log_button.place(x=428, y=450)
 
+        # main loop remover
         root.protocol("WM_DELETE_WINDOW", lambda: self.on_closing(root))
         # Start main application loop so window stay open
         root.mainloop()

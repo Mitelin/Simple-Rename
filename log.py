@@ -5,6 +5,7 @@ import tkinter as tk
 
 class Log:
 
+    # Function that make sure that LOG folder and current LOG file exist
     def checklog(self):
         today_date = datetime.now().strftime('%Y-%m-%d')
         log_file_name = f"{today_date}.log"
@@ -12,28 +13,31 @@ class Log:
         log_folder = "log"
         log_file = f"{log_path}{today_date}.log"
 
-        # Zkontrolujeme, zda existuje složka log
+        # Check for existence of log file
         if os.path.isdir(log_path):
             file_location = os.path.join(log_path, log_file_name)
-            # Pokud soubor existuje, vrátíme True
+            # return bolean on check
             if os.path.isfile(file_location):
                 return True
+            # if file does not exist its created and return bolean
             else:
                 with open(log_file, "w") as f:
                     f.write("Toto je první řádek v logu.\n")
                 return False
         else:
-            # Pokud složka neexistuje, vytvoříme ji a soubor
+            # If folder does not exist we create it.
             os.mkdir(log_folder)
             with open(log_file, "w") as f:
                 f.write("Toto je první řádek v logu.\n")
             return False
 
+    # Function that return current logfile name location and make it writable for system messages.
     def return_log_file(self):
         today_date = datetime.now().strftime('%Y-%m-%d')
         log_file = f"log/{today_date}.log"
         return open(log_file, "a", buffering=1)
 
+    # function for loading last 1000 lines from current log file for displaing in log wiever
     def get_last_lines(self, log_file, num_lines=1000):
         try:
             with open(log_file, 'r') as file:
@@ -44,13 +48,13 @@ class Log:
         except Exception as e:
             return [f"Error reading log file: {e}\n"]
 
-    # Funkce pro aktualizaci Text widgetu s novými řádky
+    # function for refresh button in log wiever.
     def update_log_text(self, log_file, text_widget):
         lines = self.get_last_lines(log_file)
         text_widget.delete(1.0, tk.END)  # Vymažeme předchozí obsah
         text_widget.insert(tk.END, ''.join(lines))  # Vložíme nové řádky
 
-    # Hlavní část aplikace
+    # creates Main window of log wiever.
     def create_ui(self):
         today_date = datetime.now().strftime('%Y-%m-%d')
         log_file = f"log/{today_date}.log"
