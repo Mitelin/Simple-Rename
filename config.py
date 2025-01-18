@@ -1,5 +1,8 @@
 # Main global variables
 class DynamicConfig:
+    _instance = None
+
+    # Proměnné pro widgety
     counter_menu = None
     file_listbox = None
     toggle_button = None
@@ -13,13 +16,30 @@ class DynamicConfig:
     move_to_top_button = None
     move_to_bottom_button = None
     rename_button = None
+    counter_type = None
+    part1_entry = None
+    open_log_button = None
     current_lang = "CZ"
     file_list = []
+
+    def __init__(self):
+        if not DynamicConfig._instance:
+            DynamicConfig._instance = self
+        else:
+            raise Exception("Instance already exists, use get_instance() to access it.")
+
+    @classmethod
+    def get_instance(cls):
+        if not cls._instance:
+            cls()
+        return cls._instance
 
 
 # Text variables for multilanguage support
 class StaticConfig:
+    _instance = None
 
+    # Texty pro více jazyků
     texts = {
         "EN": {
             "remove_all": "Remove all files",
@@ -48,3 +68,15 @@ class StaticConfig:
                 "default": "Čísla"},
         }
     }
+
+    def __init__(self):
+        if not StaticConfig._instance:
+            StaticConfig._instance = self
+        else:
+            raise Exception("Instance already exists, use get_instance() to access it.")
+
+    @classmethod
+    def get_instance(cls):
+        if not cls._instance:
+            cls()
+        return cls._instance
