@@ -9,15 +9,21 @@ class Widget(DynamicConfig, StaticConfig):
     def __init__(self):
         super().__init__()
 
-    def select_files(self, file_list, part1_entry):
-        files = filedialog.askopenfilenames()
-        if files:
-            file_list.clear()
-            file_list.extend(files)
-            self.update_file_listbox(file_list)
+    def select_files(self, file_listbox, part1_entry):
+        selected_files = filedialog.askopenfilenames(title="Vyber soubory")
 
-            # Call and activation of prepopulate entry for creating common name of selected files.
-            self.prepopulate_entry(file_list, part1_entry)
+        if selected_files:
+            self.selected_files = list(selected_files)
+
+            # 🔧 Reset GUI
+            file_listbox.delete(0, tk.END)
+            part1_entry.delete(0, tk.END)
+
+            for file in selected_files:
+                file_listbox.insert(tk.END, path.basename(file))
+
+            # 🔧 Automatické předvyplnění prefixu (např. „A“ nebo společný začátek)
+            self.prepopulate_entry(selected_files, part1_entry)
 
     # Function for prepopulate entry
     def prepopulate_entry(self, file_list, part1_entry):
@@ -58,35 +64,60 @@ class Widget(DynamicConfig, StaticConfig):
         part1_entry.delete(0, tk.END)
 
     # Remove selected files
-    def remove_selected(self, file_list, file_listbox, part1_entry):
-        selected_indices = file_listbox.curselection()
-        for index in reversed(selected_indices):
-            file_list.pop(index)
-        self.update_file_listbox(file_list)
-        self.prepopulate_entry(file_list, part1_entry)
+    def remove_selected(self, file_listbox, part1_entry):
+        selected_indices = list(file_listbox.curselection())
 
-    # Move selected files one up
-    def move_up(self, file_list, file_listbox):
-        selected_indices = file_listbox.curselection()
+        # ❗️ Nic nevybráno = neprovádět
         if not selected_indices:
             return
+
+        # Odstranit z GUI i z vnitřního seznamu
+        for index in reversed(selected_indices):
+            file_listbox.delete(index)
+            if hasattr(self, 'selected_files') and index < len(self.selected_files):
+                del self.selected_files[index]
+
+        # Pokud je list prázdný, vymazat i prefix
+        if file_listbox.size() == 0:
+            part1_entry.delete(0, tk.END)
+
+    # Move selected files one up
+    def move_up(self):
+        selected_indices = self.file_listbox.curselection()
+        if not selected_indices:
+            return
+        items = list(self.file_listbox.get(0, tk.END))
+
         for index in selected_indices:
             if index == 0:
                 continue
-            file_list[index], file_list[index - 1] = file_list[index - 1], file_list[index]
-        self.update_file_listbox(file_list, [index - 1 if index > 0 else index for index in selected_indices])
+            items[index - 1], items[index] = items[index], items[index - 1]
+
+        self.file_listbox.delete(0, tk.END)
+        for item in items:
+            self.file_listbox.insert(tk.END, item)
+
+        for index in [i - 1 if i > 0 else i for i in selected_indices]:
+            self.file_listbox.selection_set(index)
 
     # Moving selected files one down
-    def move_down(self, file_list, file_listbox):
-        selected_indices = file_listbox.curselection()
+    def move_down(self):
+        selected_indices = list(self.file_listbox.curselection())
         if not selected_indices:
             return
+        items = list(self.file_listbox.get(0, tk.END))
+
         for index in reversed(selected_indices):
-            if index == len(file_list) - 1:
+            if index == len(items) - 1:
                 continue
-            file_list[index], file_list[index + 1] = file_list[index + 1], file_list[index]
-        self.update_file_listbox(file_list,
-                                 [index + 1 if index < len(file_list) - 1 else index for index in selected_indices])
+            items[index + 1], items[index] = items[index], items[index + 1]
+
+        self.file_listbox.delete(0, tk.END)
+        for item in items:
+            self.file_listbox.insert(tk.END, item)
+
+        for index in [i + 1 if i < len(items) - 1 else i for i in selected_indices]:
+            self.file_listbox.selection_set(index)
 
     # Moving selected top
     def move_to_top(self):
@@ -94,6 +125,7 @@ class Widget(DynamicConfig, StaticConfig):
         if not selected_indices:
             return
         selected_files = [self.file_listbox.get(i) for i in selected_indices]
+
         for i in reversed(selected_indices):
             self.file_listbox.delete(i)
         for i, file in enumerate(selected_files):
@@ -106,6 +138,7 @@ class Widget(DynamicConfig, StaticConfig):
         if not selected_indices:
             return
         selected_files = [self.file_listbox.get(i) for i in selected_indices]
+
         for i in reversed(selected_indices):
             self.file_listbox.delete(i)
         for file in selected_files:

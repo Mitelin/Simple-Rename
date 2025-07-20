@@ -1,7 +1,12 @@
 from os import path, rename
 from config import DynamicConfig, StaticConfig
 from widget_logic import Widget
-
+import uuid, os
+from tkinter import messagebox
+from os import path, rename
+from config import DynamicConfig, StaticConfig
+from widget_logic import Widget
+import uuid, os
 
 class Rename(DynamicConfig, StaticConfig):
     def __init__(self):
@@ -22,15 +27,69 @@ class Rename(DynamicConfig, StaticConfig):
             print(f"Nastala chyba: {e}")
 
     def rename_files(self, part1, counter_type, file_list):
-        if file_list:
-            if counter_type == "Čísla":
-                self.base_numbering(part1, file_list)
-            elif counter_type == "Písmena":
-                self.base_alphabet(part1, file_list)
-            else:
-                print("Neplatný typ počítadla.")
+        if not file_list:
+            print("[CHYBA] Seznam souborů je prázdný.")
+            return []
+
+        # 1️⃣ Vygeneruj cílové názvy podle číslování s paddingem
+        width = len(str(len(file_list)))
+        if counter_type == "Čísla":
+            new_names = [f"{part1}{str(i + 1).zfill(width)}" for i in range(len(file_list))]
+        elif counter_type == "Písmena":
+            new_names = [f"{part1}{chr(65 + i)}" for i in range(len(file_list))]
         else:
-            print("Žádné soubory k přejmenování.")
+            print("[CHYBA] Neplatný typ číslování.")
+            return []
+
+        # 2️⃣ Kontrola kolizí mimo seznam
+        directory = path.dirname(file_list[0])
+        existing_files = set(os.listdir(directory))
+        extensions = [path.splitext(p)[1] for p in file_list]
+        intended_targets = {new + ext for new, ext in zip(new_names, extensions)}
+        file_names_in_list = {path.basename(p) for p in file_list}
+
+        for target in intended_targets:
+            if target in existing_files and target not in file_names_in_list:
+                messagebox.showerror(
+                    "Kolize souboru",
+                    f"Nelze přejmenovat: v cílové složce už existuje soubor '{target}', který není součástí vybraného seznamu."
+                )
+                return []
+
+        # 3️⃣ Fáze 1 – přejmenuj vše na dočasná unikátní jména
+        temp_map = {}
+        for original_path in file_list:
+            ext = path.splitext(original_path)[1]
+            temp_name = str(uuid.uuid4()) + ext
+            temp_path = path.join(directory, temp_name)
+            rename(original_path, temp_path)
+            temp_map[temp_path] = original_path
+
+        # 4️⃣ Fáze 2 – přejmenuj na finální jména (řeší kolize v rámci seznamu)
+        final_paths = []
+        for temp_path, new_name in zip(temp_map.keys(), new_names):
+            ext = path.splitext(temp_path)[1]
+            final_path = path.join(directory, new_name + ext)
+
+            if path.exists(final_path):
+                backup_path = path.join(directory, new_name + "_X" + ext)
+                counter = 2
+                while path.exists(backup_path):
+                    backup_path = path.join(directory, f"{new_name}_X{counter}{ext}")
+                    counter += 1
+                rename(final_path, backup_path)
+                print(f"[KOLIZE] Přesunuto: {final_path} → {backup_path}")
+
+            rename(temp_path, final_path)
+            final_paths.append(final_path)
+
+            # ✅ Přehledný zápis do logu
+            original_name = os.path.basename(temp_map[temp_path])
+            new_name = os.path.basename(final_path)
+            print(f"Přejmenováno: {original_name} -> {new_name}")
+
+        return final_paths
+
 
     def base_numbering(self, part1, file_list):
         new_file_list = []
