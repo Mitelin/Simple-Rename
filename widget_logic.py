@@ -35,8 +35,9 @@ class Widget(DynamicConfig, StaticConfig):
 
     def update_file_listbox(self, file_list, selected_indices=None):
         self.file_listbox.delete(0, tk.END)
+        self.selected_files = file_list  # ✅ Udržet aktuální seznam cest
         for file in file_list:
-            self.file_listbox.insert(tk.END, path.basename(file))  # Show only the file name
+            self.file_listbox.insert(tk.END, path.basename(file))  # Zobrazujeme jen názvy
         if selected_indices:
             for index in selected_indices:
                 self.file_listbox.select_set(index)

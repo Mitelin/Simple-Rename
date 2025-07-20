@@ -35,7 +35,7 @@ class Log:
     def return_log_file(self):
         today_date = datetime.now().strftime('%Y-%m-%d')
         log_file = f"log/{today_date}.log"
-        return open(log_file, "a", buffering=1)
+        return open(log_file, "a", buffering=1, encoding="utf-8")  # ← přidáno encoding
 
     # function for loading last 1000 lines from current log file for displaing in log wiever
     def get_last_lines(self, log_file, num_lines=1000):

@@ -2,7 +2,7 @@ from tkinter import ttk
 import tkinter as tk
 from widget_logic import Widget
 from rename_logic import Rename
-
+import os
 
 # # This is for app dev precision widget moving
 # def display_coordinates(event):
@@ -16,13 +16,18 @@ class Window(Rename, Widget):
         super().__init__()
 
     def rename_and_refresh(self):
+        # Vezmeme aktuální pořadí z GUI a přemapujeme zpět na cesty
+        sorted_names = list(self.file_listbox.get(0, tk.END))
+        name_to_path = {os.path.basename(p): p for p in self.selected_files}
+        sorted_paths = [name_to_path[name] for name in sorted_names if name in name_to_path]
+
         new_paths = self.rename_files(
             self.part1_entry.get(),
             self.counter_type.get(),
-            self.selected_files
+            sorted_paths
         )
+
         if new_paths:
-            self.selected_files = new_paths
             self.update_file_listbox(new_paths)
 
     def create_main_window(self):
