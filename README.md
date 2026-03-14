@@ -23,18 +23,21 @@ To install and run this application:
 
 2. **Navigate to the Project Directory**:
     ```bash
-    cd https://github.com/Mitelin/Simple-Rename
+    cd Simple-Rename
     ```
 
-3. **Install Dependencies** (if any):
+3. **Create and activate a virtual environment**:
     ```bash
-    pip install -r https://github.com/Mitelin/Simple-Rename/requirements.txt
+    python -m venv .venv
+    .venv\Scripts\activate
     ```
 
 4. **Run the Application**:
     ```bash
     python main.py
     ```
+
+This project currently uses only the Python standard library, so there is no `requirements.txt` file.
 
 ## Roadmap
 

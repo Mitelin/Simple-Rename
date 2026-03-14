@@ -1,8 +1,10 @@
 from tkinter import ttk
 import tkinter as tk
-from widget_logic import Widget
-from rename_logic import Rename
-import os
+from tkinter import messagebox
+
+from config import AppState
+from rename_logic import CollisionError, RenameError, RenameService, ValidationError
+from widget_logic import WidgetController
 
 # # This is for app dev precision widget moving
 # def display_coordinates(event):
@@ -10,25 +12,31 @@ import os
 #     print(f"Clicked at coordinates: ({x}, {y})")
 
 
-class Window(Rename, Widget):
+class Window:
 
     def __init__(self):
-        super().__init__()
+        self.state = AppState()
+        self.rename_service = RenameService()
+        self.widgets = WidgetController(self.state)
 
     def rename_and_refresh(self):
-        # Vezmeme aktuální pořadí z GUI a přemapujeme zpět na cesty
-        sorted_names = list(self.file_listbox.get(0, tk.END))
-        name_to_path = {os.path.basename(p): p for p in self.selected_files}
-        sorted_paths = [name_to_path[name] for name in sorted_names if name in name_to_path]
+        try:
+            result = self.rename_service.rename_files(
+                self.widgets.part1_entry.get(),
+                self.widgets.counter_type.get(),
+                self.state.selected_files
+            )
+        except ValidationError as error:
+            messagebox.showwarning("Neplatný vstup", str(error))
+            return
+        except CollisionError as error:
+            messagebox.showerror("Kolize souboru", str(error))
+            return
+        except RenameError as error:
+            messagebox.showerror("Chyba přejmenování", str(error))
+            return
 
-        new_paths = self.rename_files(
-            self.part1_entry.get(),
-            self.counter_type.get(),
-            sorted_paths
-        )
-
-        if new_paths:
-            self.update_file_listbox(new_paths)
+        self.widgets.update_file_listbox(result.renamed_paths)
 
     def create_main_window(self):
         # Main window creation
@@ -44,77 +52,93 @@ class Window(Rename, Widget):
         listbox_frame.place(x=20, y=60)
 
         # Listbox
-        self.file_listbox = tk.Listbox(listbox_frame, selectmode=tk.MULTIPLE, yscrollcommand=lambda first, last: None)
-        self.file_listbox.place(x=0, y=0, width=480, height=350)
+        self.widgets.file_listbox = tk.Listbox(
+            listbox_frame,
+            selectmode=tk.MULTIPLE,
+            yscrollcommand=lambda first, last: None
+        )
+        self.widgets.file_listbox.place(x=0, y=0, width=480, height=350)
 
         # Scrollbar
-        scrollbar = tk.Scrollbar(listbox_frame, orient=tk.VERTICAL, command=self.file_listbox.yview)
+        scrollbar = tk.Scrollbar(listbox_frame, orient=tk.VERTICAL, command=self.widgets.file_listbox.yview)
         scrollbar.place(x=480, y=0, height=350)
-        self.file_listbox.config(yscrollcommand=scrollbar.set)
+        self.widgets.file_listbox.config(yscrollcommand=scrollbar.set)
 
         # Odebrat všechny
-        self.remove_all_button = tk.Button(root, text="Odebrat všechny soubory",
-                                           command=lambda: self.remove_all_files(self.part1_entry), width=19)
-        self.remove_all_button.place(x=428, y=420)
+        self.widgets.remove_all_button = tk.Button(
+            root,
+            text="Odebrat všechny soubory",
+            command=lambda: self.widgets.remove_all_files(self.widgets.part1_entry),
+            width=19
+        )
+        self.widgets.remove_all_button.place(x=428, y=420)
 
         # Odebrat vybrané
-        self.remove_button = tk.Button(root, text="Odebrat soubor",
-                                       command=lambda: self.remove_selected(
-                                           self.file_listbox,
-                                           self.part1_entry
-                                       ))
-        self.remove_button.place(x=316, y=420)
+        self.widgets.remove_button = tk.Button(
+            root,
+            text="Odebrat soubor",
+            command=lambda: self.widgets.remove_selected(
+                self.widgets.file_listbox,
+                self.widgets.part1_entry
+            )
+        )
+        self.widgets.remove_button.place(x=316, y=420)
 
         # Vyber soubory
-        self.select_file_button = tk.Button(root, text="Vyber soubory",
-                                            command=lambda: self.select_files(self.file_listbox, self.part1_entry))
-        self.select_file_button.place(x=20, y=420)
+        self.widgets.select_file_button = tk.Button(
+            root,
+            text="Vyber soubory",
+            command=lambda: self.widgets.select_files(self.widgets.file_listbox, self.widgets.part1_entry)
+        )
+        self.widgets.select_file_button.place(x=20, y=420)
 
         # Název souboru
-        self.part1_label = tk.Label(root, text="Název souboru:")
-        self.part1_label.place(x=20, y=10)
+        self.widgets.part1_label = tk.Label(root, text="Název souboru:")
+        self.widgets.part1_label.place(x=20, y=10)
 
-        self.part1_entry = tk.Entry(root, width=40)
-        self.part1_entry.place(x=20, y=30)
+        self.widgets.part1_entry = tk.Entry(root, width=40)
+        self.widgets.part1_entry.place(x=20, y=30)
 
         # Metoda
-        self.part2_label = tk.Label(root, text="Metoda:")
-        self.part2_label.place(x=300, y=10)
+        self.widgets.part2_label = tk.Label(root, text="Metoda:")
+        self.widgets.part2_label.place(x=300, y=10)
 
-        self.counter_type = tk.StringVar()
-        self.counter_type.set("Čísla")
+        self.widgets.counter_type = tk.StringVar()
+        self.widgets.counter_type.set("Čísla")
 
-        self.counter_menu = ttk.Combobox(root, textvariable=self.counter_type)
-        self.counter_menu['values'] = ("Čísla", "Písmena")
-        self.counter_menu.place(x=300, y=29)
+        self.widgets.counter_menu = ttk.Combobox(root, textvariable=self.widgets.counter_type, state="readonly")
+        self.widgets.counter_menu['values'] = ("Čísla", "Písmena")
+        self.widgets.counter_menu.place(x=300, y=29)
 
         # Přejmenovat
-        self.rename_button = tk.Button(root, text="Přejmenuj Soubory", command=self.rename_and_refresh)
-        self.rename_button.place(x=115, y=420)
+        self.widgets.rename_button = tk.Button(root, text="Přejmenuj Soubory", command=self.rename_and_refresh)
+        self.widgets.rename_button.place(x=115, y=420)
 
         # Tlačítka pro řazení
-        self.move_up_button = tk.Button(root, text="△", command=self.move_up)
-        self.move_up_button.place(x=525, y=60, width=30, height=30)
+        self.widgets.move_up_button = tk.Button(root, text="△", command=self.widgets.move_up)
+        self.widgets.move_up_button.place(x=525, y=60, width=30, height=30)
 
-        self.move_down_button = tk.Button(root, text="▽", command=self.move_down)
-        self.move_down_button.place(x=525, y=385, width=30, height=30)
+        self.widgets.move_down_button = tk.Button(root, text="▽", command=self.widgets.move_down)
+        self.widgets.move_down_button.place(x=525, y=385, width=30, height=30)
 
-        self.move_to_top_button = tk.Button(root, text="Nahoru", command=self.move_to_top)
-        self.move_to_top_button.place(x=525, y=90, width=50, height=30)
+        self.widgets.move_to_top_button = tk.Button(root, text="Nahoru", command=self.widgets.move_to_top)
+        self.widgets.move_to_top_button.place(x=525, y=90, width=50, height=30)
 
-        self.move_to_bottom_button = tk.Button(root, text="Dolů", command=self.move_to_bottom)
-        self.move_to_bottom_button.place(x=525, y=355, width=50, height=30)
+        self.widgets.move_to_bottom_button = tk.Button(root, text="Dolů", command=self.widgets.move_to_bottom)
+        self.widgets.move_to_bottom_button.place(x=525, y=355, width=50, height=30)
 
         # Jazykový přepínač
-        self.toggle_button = tk.Button(root, text="EN", command=self.toggle_language)
-        self.toggle_button.place(x=550, y=1)
+        self.widgets.toggle_button = tk.Button(root, text="EN", command=self.widgets.toggle_language)
+        self.widgets.toggle_button.place(x=550, y=1)
 
         # Zobrazení logu
-        self.open_log_button = tk.Button(root, text="Log", command=self.open_log_viewer)
-        self.open_log_button.place(x=428, y=450)
+        self.widgets.open_log_button = tk.Button(root, text="Log", command=self.widgets.open_log_viewer)
+        self.widgets.open_log_button.place(x=428, y=450)
+
+        self.widgets.update_texts()
 
         # Zavření okna
-        root.protocol("WM_DELETE_WINDOW", lambda: self.on_closing(root))
+        root.protocol("WM_DELETE_WINDOW", lambda: self.widgets.on_closing(root))
         root.mainloop()
 
 

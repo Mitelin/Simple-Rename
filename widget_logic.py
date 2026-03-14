@@ -1,28 +1,36 @@
-from config import DynamicConfig, StaticConfig
+from config import TEXTS, get_counter_type_label, normalize_counter_type
 from tkinter import ttk, filedialog
 import tkinter as tk
 from os import path
+from collections import Counter
 from log import Log
 import sys
 
-class Widget(DynamicConfig, StaticConfig):
-    def __init__(self):
-        super().__init__()
+
+class WidgetController:
+    def __init__(self, state):
+        self.state = state
+        self.counter_menu = None
+        self.file_listbox = None
+        self.toggle_button = None
+        self.remove_all_button = None
+        self.remove_button = None
+        self.select_file_button = None
+        self.part1_label = None
+        self.part1_entry = None
+        self.part2_label = None
+        self.move_to_top_button = None
+        self.move_to_bottom_button = None
+        self.rename_button = None
+        self.counter_type = None
+        self.open_log_button = None
 
     def select_files(self, file_listbox, part1_entry):
         selected_files = filedialog.askopenfilenames(title="Vyber soubory")
 
         if selected_files:
-            self.selected_files = list(selected_files)
-
-            # 🔧 Reset GUI
-            file_listbox.delete(0, tk.END)
-            part1_entry.delete(0, tk.END)
-
-            for file in selected_files:
-                file_listbox.insert(tk.END, path.basename(file))
-
-            # 🔧 Automatické předvyplnění prefixu (např. „A“ nebo společný začátek)
+            self.state.selected_files = list(selected_files)
+            self.update_file_listbox(self.state.selected_files)
             self.prepopulate_entry(selected_files, part1_entry)
 
     # Function for prepopulate entry
@@ -35,12 +43,29 @@ class Widget(DynamicConfig, StaticConfig):
 
     def update_file_listbox(self, file_list, selected_indices=None):
         self.file_listbox.delete(0, tk.END)
-        self.selected_files = file_list  # ✅ Udržet aktuální seznam cest
-        for file in file_list:
-            self.file_listbox.insert(tk.END, path.basename(file))  # Zobrazujeme jen názvy
-        if selected_indices:
+        self.state.selected_files = list(file_list)
+        for label in self.build_display_labels(self.state.selected_files):
+            self.file_listbox.insert(tk.END, label)
+
+        if selected_indices is not None:
             for index in selected_indices:
                 self.file_listbox.select_set(index)
+
+    def build_display_labels(self, file_list):
+        basenames = [path.basename(file_path) for file_path in file_list]
+        basename_counts = Counter(basenames)
+        labels = []
+
+        for file_path in file_list:
+            basename = path.basename(file_path)
+            if basename_counts[basename] == 1:
+                labels.append(basename)
+                continue
+
+            parent_name = path.basename(path.dirname(file_path)) or path.dirname(file_path)
+            labels.append(f"{basename} [{parent_name}]")
+
+        return labels
 
     # Short function for getting the common name of all selected files
     def get_common_prefix(self, file_list):
@@ -61,105 +86,109 @@ class Widget(DynamicConfig, StaticConfig):
 
     # Removing all files from selection box and clearing the common prefix
     def remove_all_files(self, part1_entry):
+        self.state.selected_files = []
         self.file_listbox.delete(0, tk.END)
         part1_entry.delete(0, tk.END)
 
     # Remove selected files
     def remove_selected(self, file_listbox, part1_entry):
-        selected_indices = list(file_listbox.curselection())
+        selected_indices = set(file_listbox.curselection())
 
-        # ❗️ Nic nevybráno = neprovádět
         if not selected_indices:
             return
 
-        # Odstranit z GUI i z vnitřního seznamu
-        for index in reversed(selected_indices):
-            file_listbox.delete(index)
-            if hasattr(self, 'selected_files') and index < len(self.selected_files):
-                del self.selected_files[index]
+        self.state.selected_files = [
+            file_path for index, file_path in enumerate(self.state.selected_files) if index not in selected_indices
+        ]
+        self.update_file_listbox(self.state.selected_files)
 
-        # Pokud je list prázdný, vymazat i prefix
-        if file_listbox.size() == 0:
+        if not self.state.selected_files:
             part1_entry.delete(0, tk.END)
 
     # Move selected files one up
     def move_up(self):
-        selected_indices = self.file_listbox.curselection()
+        selected_indices = list(self.file_listbox.curselection())
         if not selected_indices:
             return
-        items = list(self.file_listbox.get(0, tk.END))
+
+        selected_set = set(selected_indices)
+        items = list(self.state.selected_files)
+        new_selection = []
 
         for index in selected_indices:
-            if index == 0:
-                continue
-            items[index - 1], items[index] = items[index], items[index - 1]
+            if index > 0 and (index - 1) not in selected_set:
+                items[index - 1], items[index] = items[index], items[index - 1]
+                new_selection.append(index - 1)
+            else:
+                new_selection.append(index)
 
-        self.file_listbox.delete(0, tk.END)
-        for item in items:
-            self.file_listbox.insert(tk.END, item)
-
-        for index in [i - 1 if i > 0 else i for i in selected_indices]:
-            self.file_listbox.selection_set(index)
+        self.update_file_listbox(items, new_selection)
 
     # Moving selected files one down
     def move_down(self):
         selected_indices = list(self.file_listbox.curselection())
         if not selected_indices:
             return
-        items = list(self.file_listbox.get(0, tk.END))
+
+        selected_set = set(selected_indices)
+        items = list(self.state.selected_files)
+        new_selection = []
 
         for index in reversed(selected_indices):
-            if index == len(items) - 1:
-                continue
-            items[index + 1], items[index] = items[index], items[index + 1]
+            if index < len(items) - 1 and (index + 1) not in selected_set:
+                items[index + 1], items[index] = items[index], items[index + 1]
+                new_selection.append(index + 1)
+            else:
+                new_selection.append(index)
 
-        self.file_listbox.delete(0, tk.END)
-        for item in items:
-            self.file_listbox.insert(tk.END, item)
-
-        for index in [i + 1 if i < len(items) - 1 else i for i in selected_indices]:
-            self.file_listbox.selection_set(index)
+        self.update_file_listbox(items, sorted(new_selection))
 
     # Moving selected top
     def move_to_top(self):
         selected_indices = list(self.file_listbox.curselection())
         if not selected_indices:
             return
-        selected_files = [self.file_listbox.get(i) for i in selected_indices]
 
-        for i in reversed(selected_indices):
-            self.file_listbox.delete(i)
-        for i, file in enumerate(selected_files):
-            self.file_listbox.insert(i, file)
-            self.file_listbox.selection_set(i)
+        selected_set = set(selected_indices)
+        selected_files = [self.state.selected_files[i] for i in selected_indices]
+        remaining_files = [
+            file_path for index, file_path in enumerate(self.state.selected_files) if index not in selected_set
+        ]
+        updated_files = selected_files + remaining_files
+        new_selection = list(range(len(selected_files)))
+        self.update_file_listbox(updated_files, new_selection)
 
     # Moving selected files one bottom
     def move_to_bottom(self):
         selected_indices = list(self.file_listbox.curselection())
         if not selected_indices:
             return
-        selected_files = [self.file_listbox.get(i) for i in selected_indices]
 
-        for i in reversed(selected_indices):
-            self.file_listbox.delete(i)
-        for file in selected_files:
-            self.file_listbox.insert(tk.END, file)
-            self.file_listbox.selection_set(tk.END)
+        selected_set = set(selected_indices)
+        selected_files = [self.state.selected_files[i] for i in selected_indices]
+        remaining_files = [
+            file_path for index, file_path in enumerate(self.state.selected_files) if index not in selected_set
+        ]
+        updated_files = remaining_files + selected_files
+        new_selection = list(range(len(remaining_files), len(updated_files)))
+        self.update_file_listbox(updated_files, new_selection)
 
     # Language toggle button
     def toggle_language(self):
-        if self.toggle_button.config('text')[-1] == 'CZ':
-            self.toggle_button.config(text='EN')
-            self.current_lang = 'CZ'
-            print("Přepnuto na češtinu")
-        else:
+        if self.state.current_lang == 'CZ':
+            self.state.current_lang = 'EN'
             self.toggle_button.config(text='CZ')
-            self.current_lang = 'EN'
             print("Switched to English")
+        else:
+            self.state.current_lang = 'CZ'
+            self.toggle_button.config(text='EN')
+            print("Přepnuto na češtinu")
+
         self.update_texts()
 
     # List and map of widgets
     def update_texts(self):
+        current_counter_kind = normalize_counter_type(self.counter_type.get()) or 'numbers'
 
         widgets = {
             self.remove_all_button: "remove_all",
@@ -173,15 +202,12 @@ class Widget(DynamicConfig, StaticConfig):
             self.counter_menu: "counter_menu_label",
         }
 
-        # Text update for all widgets
         for widget, text_key in widgets.items():
             if isinstance(widget, ttk.Combobox):
-                # This part is for rolling menu text update
-                widget['values'] = self.texts[self.current_lang][text_key]['values']
-                widget.set(
-                    self.texts[self.current_lang][text_key]['default'])  # Setting default value
+                widget['values'] = TEXTS[self.state.current_lang][text_key]['values']
+                widget.set(get_counter_type_label(current_counter_kind, self.state.current_lang))
             else:
-                widget.config(text=self.texts[self.current_lang][text_key])
+                widget.config(text=TEXTS[self.state.current_lang][text_key])
 
     # Create main instance of Log wiever and rechecks if everything exist / solve problems.
     def open_log_viewer(self):
@@ -191,4 +217,5 @@ class Widget(DynamicConfig, StaticConfig):
 
     # This is called on end of the main window to close all the remaining windows and application.
     def on_closing(self, root):
+        root.destroy()
         sys.exit()

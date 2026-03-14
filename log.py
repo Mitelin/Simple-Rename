@@ -58,7 +58,8 @@ class Log:
     def create_ui(self):
         today_date = datetime.now().strftime('%Y-%m-%d')
         log_file = f"log/{today_date}.log"
-        root = tk.Tk()
+        parent = tk._default_root
+        root = tk.Toplevel(parent) if parent is not None else tk.Tk()
         root.title("Log Viewer")
 
         # Vytvoření Text widgetu pro zobrazení logu
@@ -72,8 +73,8 @@ class Log:
         refresh_button = tk.Button(root, text="Refresh", command=lambda: self.update_log_text(log_file, log_text))
         refresh_button.pack(pady=5)
 
-        # Spuštění aplikace
-        root.mainloop()
+        if parent is None:
+            root.mainloop()
 
 
 
