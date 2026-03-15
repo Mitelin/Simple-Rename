@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from rename_logic import CollisionError, RenameError, RenameService, ValidationError
+from rename_logic import CollisionError, RenameError, RenameOperation, RenameService, ValidationError
 
 
 class RenameServiceTests(unittest.TestCase):
@@ -39,6 +39,31 @@ class RenameServiceTests(unittest.TestCase):
             self.service.rename_files("episode", "Roman", [file_path])
 
         self.assertIn("neznámá metoda", str(context.exception).lower())
+
+    def test_rejects_empty_base_name(self):
+        file_path = self.create_file("episode.txt")
+
+        with self.assertRaises(ValidationError) as context:
+            self.service.rename_files("", "Numbers", [file_path])
+
+        self.assertIn("zadej základ názvu", str(context.exception).lower())
+
+    def test_rejects_invalid_windows_characters_before_rename(self):
+        file_path = self.create_file("episode.txt")
+
+        with self.assertRaises(ValidationError) as context:
+            self.service.rename_files("bad:name", "Numbers", [file_path])
+
+        self.assertIn("windows nepovoluje", str(context.exception).lower())
+        self.assertIn(":", str(context.exception))
+
+    def test_rejects_control_characters_before_rename(self):
+        file_path = self.create_file("episode.txt")
+
+        with self.assertRaises(ValidationError) as context:
+            self.service.rename_files("episode\n", "Numbers", [file_path])
+
+        self.assertIn("řídicí znaky", str(context.exception).lower())
 
     def test_renames_with_number_sequence_and_padding(self):
         files = [self.create_file(f"season/file{index}.txt") for index in range(1, 13)]
@@ -115,6 +140,46 @@ class RenameServiceTests(unittest.TestCase):
         self.assertFalse((self.base_path / "rollback" / "episode2.txt").exists())
         leftovers = list((self.base_path / "rollback").glob(".simple-rename-*"))
         self.assertEqual([], leftovers)
+
+    def test_rollback_restores_last_batch_to_original_paths(self):
+        files = [
+            self.create_file("undo/a.txt", "A"),
+            self.create_file("undo/b.txt", "B"),
+        ]
+
+        rename_result = self.service.rename_files("episode", "Numbers", files)
+        rollback_result = self.service.rollback_files(rename_result.operations)
+
+        self.assertEqual(2, rollback_result.restored_count)
+        self.assertEqual(2, rollback_result.total_count)
+        self.assertEqual([], rollback_result.retryable_operations)
+        self.assertEqual(files, rollback_result.current_paths)
+        self.assertTrue((self.base_path / "undo" / "a.txt").exists())
+        self.assertTrue((self.base_path / "undo" / "b.txt").exists())
+
+    def test_rollback_skips_occupied_original_name_without_overwriting(self):
+        files = [
+            self.create_file("partial/a.txt", "A"),
+            self.create_file("partial/b.txt", "B"),
+        ]
+
+        rename_result = self.service.rename_files("episode", "Numbers", files)
+        (self.base_path / "partial" / "a.txt").write_text("foreign", encoding="utf-8")
+
+        rollback_result = self.service.rollback_files(rename_result.operations)
+
+        self.assertEqual(1, rollback_result.restored_count)
+        self.assertEqual(2, rollback_result.total_count)
+        self.assertEqual(
+            [RenameOperation(original_path=str(self.base_path / "partial" / "a.txt"), renamed_path=str(self.base_path / "partial" / "episode1.txt"))],
+            rollback_result.retryable_operations,
+        )
+        self.assertEqual(
+            [str(self.base_path / "partial" / "episode1.txt"), str(self.base_path / "partial" / "b.txt")],
+            rollback_result.current_paths,
+        )
+        self.assertEqual("foreign", (self.base_path / "partial" / "a.txt").read_text(encoding="utf-8"))
+        self.assertTrue((self.base_path / "partial" / "episode1.txt").exists())
 
 
 if __name__ == "__main__":

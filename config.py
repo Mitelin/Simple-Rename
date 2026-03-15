@@ -29,7 +29,16 @@ TEXTS = {
         "flip_order_button": "Reverse",
         "move_to_bottom_button": "Bottom",
         "rename_button": "Rename Files",
+        "undo_button": "Undo",
         "select_file_button": "Select Files",
+        "rename_success_title": "Rename Complete",
+        "rename_success_message": "Renamed {count} files.",
+        "undo_success_title": "Undo Complete",
+        "undo_success_message": "Restored {count} files.",
+        "undo_partial_title": "Undo Partially Complete",
+        "undo_partial_message": "Restored {restored} of {total} files, some could not be restored.",
+        "undo_nothing_title": "Nothing To Undo",
+        "undo_nothing_message": "There is no successful rename batch to undo.",
         "counter_menu_label": {
             "values": ("Numbers", "Letters"),
             "default": "Numbers"
@@ -56,7 +65,16 @@ TEXTS = {
         "flip_order_button": "Obrátit",
         "move_to_bottom_button": "Dolů",
         "rename_button": "Přejmenuj soubory",
+        "undo_button": "Vrátit zpět",
         "select_file_button": "Vyber soubory",
+        "rename_success_title": "Přejmenování dokončeno",
+        "rename_success_message": "Přejmenováno {count} souborů.",
+        "undo_success_title": "Obnovení dokončeno",
+        "undo_success_message": "Obnoveno {count} souborů.",
+        "undo_partial_title": "Obnovení dokončeno jen částečně",
+        "undo_partial_message": "Obnoveno {restored} z {total} souborů, některé nešlo vrátit.",
+        "undo_nothing_title": "Není co vrátit zpět",
+        "undo_nothing_message": "Není k dispozici žádné poslední úspěšné přejmenování pro vrácení.",
         "counter_menu_label": {
             "values": ("Čísla", "Písmena"),
             "default": "Čísla"

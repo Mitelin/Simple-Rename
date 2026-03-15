@@ -36,6 +36,7 @@ class WidgetController:
         self.move_down_button = None
         self.move_to_bottom_button = None
         self.rename_button = None
+        self.undo_button = None
         self.counter_type = None
         self.open_log_button = None
 
@@ -277,6 +278,7 @@ class WidgetController:
             self.flip_order_button: "flip_order_button",
             self.move_to_bottom_button: "move_to_bottom_button",
             self.rename_button: "rename_button",
+            self.undo_button: "undo_button",
             self.select_file_button: "select_file_button",
             self.counter_menu: "counter_menu_label",
             self.open_log_button: "log_button",

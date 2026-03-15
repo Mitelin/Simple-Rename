@@ -3,7 +3,7 @@ import unittest
 from tkinter import ttk
 from unittest.mock import Mock, patch
 
-from rename_logic import CollisionError, RenameResult, RenameError, ValidationError
+from rename_logic import CollisionError, RenameOperation, RenameResult, RenameError, RollbackResult, ValidationError
 from window import Window
 
 
@@ -73,6 +73,11 @@ class WindowUiTests(unittest.TestCase):
         self.assertEqual("1", str(self.window.widgets.move_to_top_button.grid_info()["row"]))
         self.assertEqual("3", str(self.window.widgets.move_to_bottom_button.grid_info()["row"]))
 
+    def test_undo_button_is_below_rename_and_disabled_by_default(self):
+        self.assertEqual("6", str(self.window.widgets.rename_button.grid_info()["row"]))
+        self.assertEqual("7", str(self.window.widgets.undo_button.grid_info()["row"]))
+        self.assertIn("disabled", self.window.widgets.undo_button.state())
+
     def test_file_hint_mentions_drag_and_drop(self):
         self.window.state.current_lang = "EN"
         self.window.widgets.update_texts()
@@ -103,11 +108,67 @@ class WindowUiTests(unittest.TestCase):
         self.window.widgets.counter_type.set("Numbers")
         self.window.widgets.update_file_listbox = Mock()
 
-        with patch.object(self.window.rename_service, "rename_files", return_value=RenameResult(["episode1.txt"])) as rename_mock:
-            self.window.rename_and_refresh()
+        rename_result = RenameResult(
+            renamed_paths=["episode1.txt"],
+            operations=[RenameOperation(original_path="a.txt", renamed_path="episode1.txt")],
+        )
+
+        with patch.object(self.window.rename_service, "rename_files", return_value=rename_result) as rename_mock:
+            with patch("window.messagebox.showinfo") as info_mock:
+                self.window.rename_and_refresh()
 
         rename_mock.assert_called_once_with("episode", "Numbers", ["a.txt"])
         self.window.widgets.update_file_listbox.assert_called_once_with(["episode1.txt"])
+        self.assertEqual(rename_result.operations, self.window.last_rename_operation)
+        self.assertNotIn("disabled", self.window.widgets.undo_button.state())
+        info_mock.assert_called_once()
+
+    def test_undo_last_rename_restores_files_and_disables_button(self):
+        self.window.last_rename_operation = [RenameOperation(original_path="a.txt", renamed_path="episode1.txt")]
+        self.window._set_undo_button_enabled(True)
+        self.window.widgets.update_file_listbox = Mock()
+
+        rollback_result = RollbackResult(
+            current_paths=["a.txt"],
+            restored_paths=["a.txt"],
+            retryable_operations=[],
+            skipped_messages=[],
+            restored_count=1,
+            total_count=1,
+        )
+
+        with patch.object(self.window.rename_service, "rollback_files", return_value=rollback_result) as rollback_mock:
+            with patch("window.messagebox.showinfo") as info_mock:
+                self.window.undo_last_rename()
+
+        rollback_mock.assert_called_once_with([RenameOperation(original_path="a.txt", renamed_path="episode1.txt")])
+        self.window.widgets.update_file_listbox.assert_called_once_with(["a.txt"])
+        self.assertEqual([], self.window.last_rename_operation)
+        self.assertIn("disabled", self.window.widgets.undo_button.state())
+        info_mock.assert_called_once()
+
+    def test_undo_last_rename_warns_on_partial_restore(self):
+        self.window.last_rename_operation = [RenameOperation(original_path="a.txt", renamed_path="episode1.txt")]
+        self.window._set_undo_button_enabled(True)
+        self.window.widgets.update_file_listbox = Mock()
+
+        rollback_result = RollbackResult(
+            current_paths=["episode1.txt"],
+            restored_paths=[],
+            retryable_operations=[RenameOperation(original_path="a.txt", renamed_path="episode1.txt")],
+            skipped_messages=["occupied"],
+            restored_count=0,
+            total_count=1,
+        )
+
+        with patch.object(self.window.rename_service, "rollback_files", return_value=rollback_result):
+            with patch("window.messagebox.showwarning") as warning_mock:
+                self.window.undo_last_rename()
+
+        self.window.widgets.update_file_listbox.assert_called_once_with(["episode1.txt"])
+        self.assertEqual(rollback_result.retryable_operations, self.window.last_rename_operation)
+        self.assertNotIn("disabled", self.window.widgets.undo_button.state())
+        warning_mock.assert_called_once()
 
     def test_rename_and_refresh_shows_validation_warning(self):
         with patch.object(self.window.rename_service, "rename_files", side_effect=ValidationError("bad input")):

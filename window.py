@@ -9,7 +9,7 @@ except ImportError:
     DND_FILES = None
     TkinterDnD = None
 
-from config import AppState
+from config import AppState, TEXTS
 from rename_logic import CollisionError, RenameError, RenameService, ValidationError
 from widget_logic import WidgetController
 
@@ -70,16 +70,16 @@ class Tooltip:
 
 class Window:
     WINDOW_WIDTH = 1040
-    WINDOW_HEIGHT = 720
+    WINDOW_HEIGHT = 770
     CONTENT_WIDTH = 984
-    CONTENT_HEIGHT = 620
+    CONTENT_HEIGHT = 670
     FILE_PANEL_WIDTH = 650
     SIDE_PANEL_WIDTH = 300
     HEADER_SUBTITLE_WRAP = 640
     FILE_HINT_WRAP = 520
     SIDE_HINT_WRAP = 250
     TIPS_WRAP = 250
-    SETTINGS_CARD_HEIGHT = 380
+    SETTINGS_CARD_HEIGHT = 430
     TIPS_CARD_HEIGHT = 220
 
     PALETTE = {
@@ -107,6 +107,7 @@ class Window:
         self.rename_service = RenameService()
         self.widgets = WidgetController(self.state)
         self.widgets.method_tooltip = None
+        self.last_rename_operation = []
 
     def _configure_styles(self, root):
         colors = self.PALETTE
@@ -183,6 +184,23 @@ class Window:
         style.map(
             "Secondary.TButton",
             background=[("active", colors["secondary_active"]), ("pressed", colors["secondary_pressed"])]
+        )
+        style.configure(
+            "Outline.TButton",
+            background=colors["card_bg"],
+            foreground=colors["text_primary"],
+            borderwidth=1,
+            focusthickness=1,
+            focuscolor=colors["card_bg"],
+            lightcolor=colors["card_border"],
+            darkcolor=colors["card_border"],
+            padding=(16, 10),
+            font=button_font
+        )
+        style.map(
+            "Outline.TButton",
+            background=[("active", colors["ghost_active"]), ("pressed", colors["ghost_pressed"])],
+            foreground=[("disabled", colors["text_muted"])],
         )
         style.configure(
             "Ghost.TButton",
@@ -355,9 +373,9 @@ class Window:
 
         actions = ttk.Frame(file_panel, style="Card.TFrame")
         actions.grid(row=3, column=0, sticky="ew", pady=(16, 0))
-        actions.columnconfigure(0, weight=1, uniform="file-actions")
-        actions.columnconfigure(1, weight=1, uniform="file-actions")
-        actions.columnconfigure(2, weight=1, uniform="file-actions")
+        actions.columnconfigure(0, weight=2)
+        actions.columnconfigure(1, weight=2)
+        actions.columnconfigure(2, weight=3)
 
         self.widgets.select_file_button = ttk.Button(
             actions,
@@ -407,6 +425,7 @@ class Window:
         settings_card.rowconfigure(3, minsize=46)
         settings_card.rowconfigure(5, minsize=50)
         settings_card.rowconfigure(6, minsize=66)
+        settings_card.rowconfigure(7, minsize=56)
 
         self.widgets.settings_panel_title_label = ttk.Label(settings_card, style="Section.TLabel")
         self.widgets.settings_panel_title_label.grid(row=0, column=0, sticky="w")
@@ -458,6 +477,10 @@ class Window:
         self.widgets.rename_button = ttk.Button(settings_card, style="Accent.TButton", command=self.rename_and_refresh)
         self.widgets.rename_button.grid(row=6, column=0, sticky="ew", pady=(8, 8))
 
+        self.widgets.undo_button = ttk.Button(settings_card, style="Outline.TButton", command=self.undo_last_rename)
+        self.widgets.undo_button.grid(row=7, column=0, sticky="ew")
+        self._set_undo_button_enabled(False)
+
         tips_card = ttk.Frame(
             side_panel,
             style="Card.TFrame",
@@ -501,7 +524,72 @@ class Window:
             messagebox.showerror("Chyba přejmenování", str(error))
             return
 
+        self.last_rename_operation = list(result.operations)
+        self._set_undo_button_enabled(bool(self.last_rename_operation))
         self.widgets.update_file_listbox(result.renamed_paths)
+        success_message = self._current_texts()["rename_success_message"].format(count=len(result.renamed_paths))
+        print(success_message)
+        messagebox.showinfo(self._current_texts()["rename_success_title"], success_message)
+
+    def undo_last_rename(self):
+        if not self.last_rename_operation:
+            messagebox.showinfo(
+                self._current_texts()["undo_nothing_title"],
+                self._current_texts()["undo_nothing_message"]
+            )
+            return
+
+        try:
+            result = self.rename_service.rollback_files(self.last_rename_operation)
+        except ValidationError as error:
+            messagebox.showwarning(self._current_texts()["undo_nothing_title"], str(error))
+            return
+        except RenameError as error:
+            messagebox.showerror("Chyba vrácení", str(error))
+            return
+
+        self.last_rename_operation = list(result.retryable_operations)
+        self._set_undo_button_enabled(bool(self.last_rename_operation))
+        self.widgets.update_file_listbox(result.current_paths)
+
+        if result.restored_count == result.total_count:
+            success_message = self._current_texts()["undo_success_message"].format(count=result.restored_count)
+            print(success_message)
+            messagebox.showinfo(self._current_texts()["undo_success_title"], success_message)
+            return
+
+        details = self._format_result_details(result.skipped_messages)
+        partial_message = self._current_texts()["undo_partial_message"].format(
+            restored=result.restored_count,
+            total=result.total_count,
+        )
+        if details:
+            partial_message = f"{partial_message}\n\n{details}"
+
+        print(partial_message)
+        messagebox.showwarning(self._current_texts()["undo_partial_title"], partial_message)
+
+    def _current_texts(self):
+        return TEXTS[self.state.current_lang]
+
+    def _set_undo_button_enabled(self, enabled):
+        if self.widgets.undo_button is None:
+            return
+
+        if enabled:
+            self.widgets.undo_button.state(["!disabled"])
+        else:
+            self.widgets.undo_button.state(["disabled"])
+
+    def _format_result_details(self, messages):
+        if not messages:
+            return ""
+
+        preview = messages[:4]
+        details = "\n\n".join(preview)
+        if len(messages) > len(preview):
+            details = f"{details}\n\n+{len(messages) - len(preview)} dalších položek"
+        return details
 
     def create_main_window(self):
         root = TkinterDnD.Tk() if TkinterDnD is not None else tk.Tk()
