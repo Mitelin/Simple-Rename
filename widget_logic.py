@@ -46,6 +46,39 @@ class WidgetController:
             self.update_file_listbox(self.state.selected_files)
             self.prepopulate_entry(selected_files, part1_entry)
 
+    def parse_drop_data(self, drop_data, splitlist):
+        if not drop_data:
+            return []
+
+        try:
+            return list(splitlist(drop_data))
+        except tk.TclError:
+            return [drop_data]
+
+    def add_dropped_files(self, dropped_files, part1_entry):
+        merged_files = list(self.state.selected_files)
+        known_files = {path.normcase(path.abspath(file_path)) for file_path in merged_files}
+
+        for file_path in dropped_files:
+            absolute_path = path.abspath(file_path)
+            normalized_path = path.normcase(absolute_path)
+            if normalized_path in known_files or not path.isfile(absolute_path):
+                continue
+
+            merged_files.append(absolute_path)
+            known_files.add(normalized_path)
+
+        if merged_files == self.state.selected_files:
+            return
+
+        self.update_file_listbox(merged_files)
+        self.prepopulate_entry(merged_files, part1_entry)
+
+    def handle_file_drop(self, event, part1_entry):
+        dropped_files = self.parse_drop_data(event.data, self.file_listbox.tk.splitlist)
+        self.add_dropped_files(dropped_files, part1_entry)
+        return "break"
+
     # Function for prepopulate entry
     def prepopulate_entry(self, file_list, part1_entry):
         common_prefix = self.get_common_prefix(file_list)

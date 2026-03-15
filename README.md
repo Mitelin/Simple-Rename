@@ -32,12 +32,17 @@ To install and run this application:
     .venv\Scripts\activate
     ```
 
-4. **Run the Application**:
+4. **Install dependencies**:
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+5. **Run the Application**:
     ```bash
     python main.py
     ```
 
-This project currently uses only the Python standard library, so there is no `requirements.txt` file.
+The app uses Tkinter from the standard library plus `tkinterdnd2` for drag-and-drop support on Windows.
 
 ## Testing
 
@@ -47,7 +52,7 @@ Run the automated test suite with:
 python -m unittest discover -s tests -v
 ```
 
-The suite covers rename safety rules, numbering variants, controller behavior, and core UI layout regressions.
+The suite covers rename safety rules, numbering variants, controller behavior, drag-and-drop parsing, and core UI layout regressions.
 
 ## Roadmap
 

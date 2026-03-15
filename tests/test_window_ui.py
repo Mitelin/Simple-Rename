@@ -73,6 +73,12 @@ class WindowUiTests(unittest.TestCase):
         self.assertEqual("1", str(self.window.widgets.move_to_top_button.grid_info()["row"]))
         self.assertEqual("3", str(self.window.widgets.move_to_bottom_button.grid_info()["row"]))
 
+    def test_file_hint_mentions_drag_and_drop(self):
+        self.window.state.current_lang = "EN"
+        self.window.widgets.update_texts()
+
+        self.assertIn("drag files", self.window.widgets.files_panel_hint_label.cget("text"))
+
     def test_rename_and_refresh_updates_file_list_on_success(self):
         self.window.state.selected_files = ["a.txt"]
         self.window.widgets.part1_entry.insert(0, "episode")

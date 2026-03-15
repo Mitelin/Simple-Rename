@@ -1,5 +1,7 @@
 import tkinter as tk
+import tempfile
 import unittest
+from pathlib import Path
 from tkinter import ttk
 from unittest.mock import patch
 
@@ -77,6 +79,37 @@ class WidgetControllerTests(unittest.TestCase):
         self.assertEqual(list(selected), self.state.selected_files)
         self.assertEqual(["scene_01.png", "scene_02.png"], list(self.controller.file_listbox.get(0, tk.END)))
         self.assertEqual("scene_0", self.controller.part1_entry.get())
+
+    def test_parse_drop_data_handles_braced_paths_with_spaces(self):
+        drop_data = "{C:/My Files/scene 01.png} {C:/My Files/scene 02.png}"
+
+        parsed = self.controller.parse_drop_data(drop_data, self.root.tk.splitlist)
+
+        self.assertEqual([
+            "C:/My Files/scene 01.png",
+            "C:/My Files/scene 02.png",
+        ], parsed)
+
+    def test_add_dropped_files_appends_unique_real_files(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            first_file = Path(temp_dir) / "first.txt"
+            second_file = Path(temp_dir) / "second.txt"
+            folder_path = Path(temp_dir) / "folder"
+            first_file.write_text("a", encoding="utf-8")
+            second_file.write_text("b", encoding="utf-8")
+            folder_path.mkdir()
+
+            self.state.selected_files = [str(first_file)]
+            self.controller.update_file_listbox(self.state.selected_files)
+
+            self.controller.add_dropped_files(
+                [str(first_file), str(second_file), str(folder_path)],
+                self.controller.part1_entry,
+            )
+
+            self.assertEqual([str(first_file), str(second_file)], self.state.selected_files)
+            self.assertEqual(["first.txt", "second.txt"], list(self.controller.file_listbox.get(0, tk.END)))
+            self.assertEqual("first", self.controller.part1_entry.get())
 
     def test_remove_selected_clears_entry_when_last_file_is_removed(self):
         self.state.selected_files = [r"C:\files\only.txt"]

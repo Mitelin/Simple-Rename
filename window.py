@@ -3,6 +3,12 @@ import tkinter as tk
 from tkinter import font as tkfont
 from tkinter import messagebox
 
+try:
+    from tkinterdnd2 import DND_FILES, TkinterDnD
+except ImportError:
+    DND_FILES = None
+    TkinterDnD = None
+
 from config import AppState
 from rename_logic import CollisionError, RenameError, RenameService, ValidationError
 from widget_logic import WidgetController
@@ -265,6 +271,18 @@ class Window:
         scrollbar.grid(row=0, column=1, sticky="ns")
         self.widgets.file_listbox.config(yscrollcommand=scrollbar.set)
 
+        if DND_FILES is not None:
+            list_surface.drop_target_register(DND_FILES)
+            list_surface.dnd_bind(
+                "<<Drop>>",
+                lambda event: self.widgets.handle_file_drop(event, self.widgets.part1_entry)
+            )
+            self.widgets.file_listbox.drop_target_register(DND_FILES)
+            self.widgets.file_listbox.dnd_bind(
+                "<<Drop>>",
+                lambda event: self.widgets.handle_file_drop(event, self.widgets.part1_entry)
+            )
+
         move_controls = ttk.Frame(list_wrap, style="Card.TFrame")
         move_controls.grid(row=0, column=1, sticky="ns", padx=(12, 0))
         for row_index in range(5):
@@ -419,7 +437,7 @@ class Window:
         self.widgets.update_file_listbox(result.renamed_paths)
 
     def create_main_window(self):
-        root = tk.Tk()
+        root = TkinterDnD.Tk() if TkinterDnD is not None else tk.Tk()
         root.title("Simple Mass Rename")
 
         self._configure_styles(root)
