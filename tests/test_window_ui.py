@@ -79,6 +79,24 @@ class WindowUiTests(unittest.TestCase):
 
         self.assertIn("drag files", self.window.widgets.files_panel_hint_label.cget("text"))
 
+    def test_method_info_icon_and_tooltip_text_update_with_language(self):
+        self.window.state.current_lang = "EN"
+        self.window.widgets.update_texts()
+
+        self.assertEqual("i", self.window.widgets.method_info_button.cget("text"))
+        self.assertIn("Numbers:", self.window.widgets.method_tooltip.text)
+        self.assertIn("Letters:", self.window.widgets.method_tooltip.text)
+        self.assertIn("12 files become 01-12", self.window.widgets.method_tooltip.text)
+        self.assertIn("original file extension is kept", self.window.widgets.method_tooltip.text)
+
+        self.window.state.current_lang = "CZ"
+        self.window.widgets.update_texts()
+
+        self.assertIn("Čísla:", self.window.widgets.method_tooltip.text)
+        self.assertIn("Písmena:", self.window.widgets.method_tooltip.text)
+        self.assertIn("při 12 souborech 01-12", self.window.widgets.method_tooltip.text)
+        self.assertIn("původní přípona souboru zůstane zachovaná", self.window.widgets.method_tooltip.text)
+
     def test_rename_and_refresh_updates_file_list_on_success(self):
         self.window.state.selected_files = ["a.txt"]
         self.window.widgets.part1_entry.insert(0, "episode")

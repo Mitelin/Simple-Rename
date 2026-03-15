@@ -17,6 +17,55 @@ from widget_logic import WidgetController
 # def display_coordinates(event):
 #     x, y = event.x, event.y
 #     print(f"Clicked at coordinates: ({x}, {y})")
+class Tooltip:
+    def __init__(self, widget, text, *, wraplength=260):
+        self.widget = widget
+        self.text = text
+        self.wraplength = wraplength
+        self.tooltip_window = None
+
+        self.widget.bind("<Enter>", self.show)
+        self.widget.bind("<Leave>", self.hide)
+        self.widget.bind("<ButtonPress>", self.hide)
+
+    def update_text(self, text):
+        self.text = text
+        if self.tooltip_window is not None:
+            label = self.tooltip_window.winfo_children()[0]
+            label.config(text=text)
+
+    def show(self, _event=None):
+        if self.tooltip_window is not None:
+            return
+
+        x = self.widget.winfo_rootx() + self.widget.winfo_width() + 10
+        y = self.widget.winfo_rooty() - 4
+        self.tooltip_window = tk.Toplevel(self.widget)
+        self.tooltip_window.wm_overrideredirect(True)
+        self.tooltip_window.wm_geometry(f"+{x}+{y}")
+        self.tooltip_window.configure(bg="#cfdad6")
+
+        label = tk.Label(
+            self.tooltip_window,
+            text=self.text,
+            justify="left",
+            wraplength=self.wraplength,
+            bg="#f8fbfa",
+            fg="#23343b",
+            relief="solid",
+            bd=1,
+            padx=10,
+            pady=8,
+            font=("Segoe UI", 9),
+        )
+        label.pack()
+
+    def hide(self, _event=None):
+        if self.tooltip_window is None:
+            return
+
+        self.tooltip_window.destroy()
+        self.tooltip_window = None
 
 
 class Window:
@@ -57,6 +106,7 @@ class Window:
         self.state = AppState()
         self.rename_service = RenameService()
         self.widgets = WidgetController(self.state)
+        self.widgets.method_tooltip = None
 
     def _configure_styles(self, root):
         colors = self.PALETTE
@@ -375,8 +425,25 @@ class Window:
         self.widgets.part1_entry = ttk.Entry(settings_card, style="App.TEntry")
         self.widgets.part1_entry.grid(row=3, column=0, sticky="ew", pady=(6, 18))
 
-        self.widgets.part2_label = ttk.Label(settings_card, style="Field.TLabel")
-        self.widgets.part2_label.grid(row=4, column=0, sticky="w")
+        method_row = ttk.Frame(settings_card, style="Card.TFrame")
+        method_row.grid(row=4, column=0, sticky="w")
+        method_row.columnconfigure(0, weight=0)
+        method_row.columnconfigure(1, weight=0)
+
+        self.widgets.part2_label = ttk.Label(method_row, style="Field.TLabel")
+        self.widgets.part2_label.grid(row=0, column=0, sticky="w")
+
+        self.widgets.method_info_button = tk.Label(
+            method_row,
+            text="i",
+            bg=self.PALETTE["accent"],
+            fg="#ffffff",
+            width=2,
+            cursor="hand2",
+            font=("Segoe UI Semibold", 9),
+        )
+        self.widgets.method_info_button.grid(row=0, column=1, sticky="w", padx=(8, 0))
+        self.widgets.method_tooltip = Tooltip(self.widgets.method_info_button, "")
 
         self.widgets.counter_type = tk.StringVar(value="Čísla")
         self.widgets.counter_menu = ttk.Combobox(

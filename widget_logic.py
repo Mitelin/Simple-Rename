@@ -29,6 +29,7 @@ class WidgetController:
         self.part1_label = None
         self.part1_entry = None
         self.part2_label = None
+        self.method_info_button = None
         self.move_to_top_button = None
         self.flip_order_button = None
         self.move_up_button = None
@@ -250,6 +251,12 @@ class WidgetController:
         if self.toggle_button is not None:
             next_lang = 'CZ' if self.state.current_lang == 'EN' else 'EN'
             self.toggle_button.config(text=next_lang)
+
+        if self.method_info_button is not None:
+            self.method_info_button.config(text="i")
+
+        if hasattr(self, "method_tooltip") and self.method_tooltip is not None:
+            self.method_tooltip.update_text(current_texts["method_tooltip"])
 
         widgets = {
             self.app_title_label: "app_title",
