@@ -39,6 +39,16 @@ To install and run this application:
 
 This project currently uses only the Python standard library, so there is no `requirements.txt` file.
 
+## Testing
+
+Run the automated test suite with:
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+The suite covers rename safety rules, numbering variants, controller behavior, and core UI layout regressions.
+
 ## Roadmap
 
 We are committed to expanding the capabilities of this application with the following planned features:

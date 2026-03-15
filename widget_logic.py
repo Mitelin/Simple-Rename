@@ -10,6 +10,16 @@ import sys
 class WidgetController:
     def __init__(self, state):
         self.state = state
+        self.app_title_label = None
+        self.app_subtitle_label = None
+        self.files_panel_title_label = None
+        self.files_panel_hint_label = None
+        self.settings_panel_title_label = None
+        self.settings_panel_hint_label = None
+        self.tips_panel_title_label = None
+        self.tips_line_1_label = None
+        self.tips_line_2_label = None
+        self.tips_line_3_label = None
         self.counter_menu = None
         self.file_listbox = None
         self.toggle_button = None
@@ -20,6 +30,9 @@ class WidgetController:
         self.part1_entry = None
         self.part2_label = None
         self.move_to_top_button = None
+        self.flip_order_button = None
+        self.move_up_button = None
+        self.move_down_button = None
         self.move_to_bottom_button = None
         self.rename_button = None
         self.counter_type = None
@@ -173,6 +186,16 @@ class WidgetController:
         new_selection = list(range(len(remaining_files), len(updated_files)))
         self.update_file_listbox(updated_files, new_selection)
 
+    def flip_order(self):
+        items = list(self.state.selected_files)
+        if not items:
+            return
+
+        selected_indices = list(self.file_listbox.curselection())
+        reversed_items = list(reversed(items))
+        new_selection = sorted((len(items) - 1 - index) for index in selected_indices)
+        self.update_file_listbox(reversed_items, new_selection)
+
     # Language toggle button
     def toggle_language(self):
         if self.state.current_lang == 'CZ':
@@ -189,25 +212,45 @@ class WidgetController:
     # List and map of widgets
     def update_texts(self):
         current_counter_kind = normalize_counter_type(self.counter_type.get()) or 'numbers'
+        current_texts = TEXTS[self.state.current_lang]
+
+        if self.toggle_button is not None:
+            next_lang = 'CZ' if self.state.current_lang == 'EN' else 'EN'
+            self.toggle_button.config(text=next_lang)
 
         widgets = {
+            self.app_title_label: "app_title",
+            self.app_subtitle_label: "app_subtitle",
+            self.files_panel_title_label: "files_panel_title",
+            self.files_panel_hint_label: "files_panel_hint",
+            self.settings_panel_title_label: "settings_panel_title",
+            self.settings_panel_hint_label: "settings_panel_hint",
+            self.tips_panel_title_label: "tips_panel_title",
+            self.tips_line_1_label: "tips_line_1",
+            self.tips_line_2_label: "tips_line_2",
+            self.tips_line_3_label: "tips_line_3",
             self.remove_all_button: "remove_all",
             self.remove_button: "remove_file",
             self.part1_label: "name_label",
             self.part2_label: "method_label",
             self.move_to_top_button: "move_to_top_button",
+            self.flip_order_button: "flip_order_button",
             self.move_to_bottom_button: "move_to_bottom_button",
             self.rename_button: "rename_button",
             self.select_file_button: "select_file_button",
             self.counter_menu: "counter_menu_label",
+            self.open_log_button: "log_button",
         }
 
         for widget, text_key in widgets.items():
+            if widget is None:
+                continue
+
             if isinstance(widget, ttk.Combobox):
-                widget['values'] = TEXTS[self.state.current_lang][text_key]['values']
+                widget['values'] = current_texts[text_key]['values']
                 widget.set(get_counter_type_label(current_counter_kind, self.state.current_lang))
             else:
-                widget.config(text=TEXTS[self.state.current_lang][text_key])
+                widget.config(text=current_texts[text_key])
 
     # Create main instance of Log wiever and rechecks if everything exist / solve problems.
     def open_log_viewer(self):
