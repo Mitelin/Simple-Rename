@@ -121,7 +121,7 @@ class WindowUiTests(unittest.TestCase):
         self.window.widgets.update_file_listbox.assert_called_once_with(["episode1.txt"])
         self.assertEqual(rename_result.operations, self.window.last_rename_operation)
         self.assertNotIn("disabled", self.window.widgets.undo_button.state())
-        info_mock.assert_called_once()
+        info_mock.assert_not_called()
 
     def test_undo_last_rename_restores_files_and_disables_button(self):
         self.window.last_rename_operation = [RenameOperation(original_path="a.txt", renamed_path="episode1.txt")]

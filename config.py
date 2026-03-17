@@ -1,5 +1,8 @@
 from dataclasses import dataclass, field
 
+APP_NAME = "Simple Rename"
+APP_VERSION = "1.0.0"
+
 
 @dataclass
 class AppState:
@@ -9,7 +12,7 @@ class AppState:
 
 TEXTS = {
     "EN": {
-        "app_title": "Simple Rename",
+        "app_title": APP_NAME,
         "app_subtitle": "Bulk rename files safely with clear ordering and predictable numbering.",
         "files_panel_title": "Selected Files",
         "files_panel_hint": "Reorder the list before renaming, or drag files from Explorer into the white area. The order here decides the final sequence.",
@@ -45,7 +48,7 @@ TEXTS = {
         },
     },
     "CZ": {
-        "app_title": "Simple Rename",
+        "app_title": APP_NAME,
         "app_subtitle": "Hromadne prejmenuj soubory bezpecne, prehledne a ve spravnem poradi.",
         "files_panel_title": "Vybrane soubory",
         "files_panel_hint": "Pred prejmenovanim si uprav poradi, nebo sem pretahni soubory z Exploreru. Prave to urci vyslednou sekvenci.",

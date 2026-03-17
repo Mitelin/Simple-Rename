@@ -9,7 +9,7 @@ except ImportError:
     DND_FILES = None
     TkinterDnD = None
 
-from config import AppState, TEXTS
+from config import APP_NAME, APP_VERSION, AppState, TEXTS
 from rename_logic import CollisionError, RenameError, RenameService, ValidationError
 from widget_logic import WidgetController
 
@@ -108,6 +108,21 @@ class Window:
         self.widgets = WidgetController(self.state)
         self.widgets.method_tooltip = None
         self.last_rename_operation = []
+
+    def _register_drop_target(self, widget):
+        if DND_FILES is None:
+            return False
+
+        try:
+            widget.drop_target_register(DND_FILES)
+            widget.dnd_bind(
+                "<<Drop>>",
+                lambda event: self.widgets.handle_file_drop(event, self.widgets.part1_entry)
+            )
+        except (tk.TclError, RuntimeError):
+            return False
+
+        return True
 
     def _configure_styles(self, root):
         colors = self.PALETTE
@@ -339,17 +354,8 @@ class Window:
         scrollbar.grid(row=0, column=1, sticky="ns")
         self.widgets.file_listbox.config(yscrollcommand=scrollbar.set)
 
-        if DND_FILES is not None:
-            list_surface.drop_target_register(DND_FILES)
-            list_surface.dnd_bind(
-                "<<Drop>>",
-                lambda event: self.widgets.handle_file_drop(event, self.widgets.part1_entry)
-            )
-            self.widgets.file_listbox.drop_target_register(DND_FILES)
-            self.widgets.file_listbox.dnd_bind(
-                "<<Drop>>",
-                lambda event: self.widgets.handle_file_drop(event, self.widgets.part1_entry)
-            )
+        self._register_drop_target(list_surface)
+        self._register_drop_target(self.widgets.file_listbox)
 
         move_controls = ttk.Frame(list_wrap, style="Card.TFrame")
         move_controls.grid(row=0, column=1, sticky="ns", padx=(12, 0))
@@ -529,7 +535,6 @@ class Window:
         self.widgets.update_file_listbox(result.renamed_paths)
         success_message = self._current_texts()["rename_success_message"].format(count=len(result.renamed_paths))
         print(success_message)
-        messagebox.showinfo(self._current_texts()["rename_success_title"], success_message)
 
     def undo_last_rename(self):
         if not self.last_rename_operation:
@@ -593,7 +598,7 @@ class Window:
 
     def create_main_window(self):
         root = TkinterDnD.Tk() if TkinterDnD is not None else tk.Tk()
-        root.title("Simple Mass Rename")
+        root.title(f"{APP_NAME} {APP_VERSION}")
 
         self._configure_styles(root)
         root.geometry(f"{self.WINDOW_WIDTH}x{self.WINDOW_HEIGHT}")

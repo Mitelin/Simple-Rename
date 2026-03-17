@@ -2,6 +2,8 @@
 
 Simple Rename je desktopová aplikace v Pythonu pro bezpečné hromadné přejmenování souborů. Je zaměřená na rychlé přejmenování epizod, videí nebo jiných sérií souborů bez zbytečné složitosti, ale zároveň s důrazem na bezpečnost operace a předvídatelné chování.
 
+Aktuální release: `1.0.0`
+
 Aktuální verze už není jen jednoduchý proof of concept. Umí bezpečné batch rename operace, přehledné řazení souborů v UI, drag-and-drop z Windows Exploreru, lokalizaci CZ/EN a vrácení posledního přejmenování.
 
 ## Hlavní vlastnosti
