@@ -1,3 +1,5 @@
+"""Core rename and rollback logic for batch file operations."""
+
 import os
 import uuid
 from dataclasses import dataclass
@@ -7,31 +9,43 @@ from config import normalize_counter_type
 
 
 class RenameError(Exception):
+    """Base exception for rename-related failures shown to the user."""
+
     pass
 
 
 class ValidationError(RenameError):
+    """Raised when the rename request is incomplete or invalid."""
+
     pass
 
 
 class CollisionError(RenameError):
+    """Raised when a rename target would collide with an existing file."""
+
     pass
 
 
 @dataclass(frozen=True)
 class RenameOperation:
+    """Record the original and renamed path of a single file operation."""
+
     original_path: str
     renamed_path: str
 
 
 @dataclass(frozen=True)
 class RenameResult:
+    """Return value for a successful batch rename."""
+
     renamed_paths: list[str]
     operations: list[RenameOperation]
 
 
 @dataclass(frozen=True)
 class RollbackResult:
+    """Return value for an undo attempt, including partial restore details."""
+
     current_paths: list[str]
     restored_paths: list[str]
     retryable_operations: list[RenameOperation]
@@ -41,6 +55,8 @@ class RollbackResult:
 
 
 class RenameService:
+    """Validate, plan, and execute safe two-phase rename operations."""
+
     INVALID_WINDOWS_FILENAME_CHARS = set('<>:"/\\|?*')
     RESERVED_WINDOWS_NAMES = {
         "CON", "PRN", "AUX", "NUL",
@@ -49,6 +65,7 @@ class RenameService:
     }
 
     def rename_files(self, part1, counter_type, file_list):
+        """Rename the selected files and return enough data for undo."""
         normalized_files = [path.abspath(file_path) for file_path in file_list]
         self._validate_request(normalized_files, part1, counter_type)
 
@@ -75,6 +92,7 @@ class RenameService:
         return RenameResult(renamed_paths=renamed_paths, operations=operations)
 
     def rollback_files(self, operations):
+        """Undo the last successful rename batch where it is still safe to do so."""
         if not operations:
             raise ValidationError("Není co vrátit zpět.")
 
@@ -114,6 +132,7 @@ class RenameService:
         )
 
     def _validate_request(self, file_list, part1, counter_type):
+        """Reject empty requests, missing files, and unknown counter types."""
         if not file_list:
             raise ValidationError("Nejdřív vyber soubory k přejmenování.")
 
@@ -131,6 +150,7 @@ class RenameService:
             raise ValidationError(f"Neznámá metoda číslování: {counter_type}")
 
     def _validate_target_names(self, new_names):
+        """Check final filenames against Windows naming rules before renaming."""
         for new_name in new_names:
             control_chars = sorted({repr(char)[1:-1] for char in new_name if ord(char) < 32})
             if control_chars:
@@ -163,6 +183,7 @@ class RenameService:
                 )
 
     def _build_rollback_plan(self, operations):
+        """Split rollback operations into safe-to-restore and skipped items."""
         missing_messages = []
         existing_operations = []
 
@@ -182,6 +203,8 @@ class RenameService:
         changed = True
         while changed:
             changed = False
+            # Keep shrinking the plan until every restore target is either free
+            # or produced by another operation in the same rollback batch.
             eligible_sources = {
                 path.normcase(path.abspath(operation.renamed_path)) for operation in eligible_operations
             }
@@ -226,12 +249,15 @@ class RenameService:
         return eligible_operations, skipped_messages, retryable_operations
 
     def _execute_move_plan(self, move_plan, success_label, failure_message):
+        """Run a two-phase move plan and roll everything back if any step fails."""
         staged_moves = []
         final_paths = []
         completed_moves = []
 
         try:
             for original_path, final_path in move_plan:
+                # Stage every file to a unique temporary name first so swaps and
+                # overlapping targets do not corrupt the batch.
                 temp_path = self._build_temp_path(original_path)
                 os.replace(original_path, temp_path)
                 staged_moves.append((original_path, temp_path, final_path))
@@ -248,6 +274,7 @@ class RenameService:
         return final_paths
 
     def _build_target_names(self, part1, counter_kind, total_files):
+        """Generate the base filenames for the selected numbering mode."""
         if counter_kind == "numbers":
             width = max(1, len(str(total_files)))
             return [f"{part1}{str(index + 1).zfill(width)}" for index in range(total_files)]
@@ -255,6 +282,7 @@ class RenameService:
         return [f"{part1}{self._index_to_excel_label(index)}" for index in range(total_files)]
 
     def _build_rename_plan(self, file_list, new_names):
+        """Pair each source file with its final path in the original directory."""
         rename_plan = []
         for original_path, new_name in zip(file_list, new_names):
             directory = path.dirname(original_path)
@@ -264,6 +292,7 @@ class RenameService:
         return rename_plan
 
     def _find_external_collision(self, rename_plan):
+        """Return the first conflicting target path, if any."""
         original_paths = {path.normcase(path.abspath(old_path)) for old_path, _ in rename_plan}
         planned_targets = set()
 
@@ -279,6 +308,7 @@ class RenameService:
         return None
 
     def _build_temp_path(self, original_path):
+        """Create a unique temporary path next to the original file."""
         directory = path.dirname(original_path)
         extension = path.splitext(original_path)[1]
 
@@ -288,6 +318,7 @@ class RenameService:
                 return candidate
 
     def _rollback_moves(self, staged_moves, completed_moves):
+        """Best-effort rollback for partially completed two-phase move batches."""
         for original_path, _, final_path in reversed(completed_moves):
             if path.exists(final_path) and not path.exists(original_path):
                 try:
@@ -303,6 +334,7 @@ class RenameService:
                     pass
 
     def _index_to_excel_label(self, index):
+        """Convert a zero-based index to an Excel-style column label."""
         label = ""
         current = index + 1
 

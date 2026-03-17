@@ -1,3 +1,5 @@
+"""Application constants, shared state, and localized UI strings."""
+
 from dataclasses import dataclass, field
 
 APP_NAME = "Simple Rename"
@@ -6,6 +8,8 @@ APP_VERSION = "1.0.0"
 
 @dataclass
 class AppState:
+    """Mutable UI state shared between the window and widget controller."""
+
     current_lang: str = "CZ"
     selected_files: list[str] = field(default_factory=list)
 
@@ -105,9 +109,11 @@ COUNTER_TYPE_LABELS = {
 
 
 def normalize_counter_type(value):
+    """Map a localized counter label to its internal normalized key."""
     return COUNTER_TYPE_ALIASES.get(value)
 
 
 def get_counter_type_label(counter_kind, lang):
+    """Return the localized label for an internal counter type key."""
     normalized_kind = counter_kind if counter_kind in {"numbers", "letters"} else "numbers"
     return COUNTER_TYPE_LABELS[lang][normalized_kind]

@@ -1,14 +1,21 @@
-from config import TEXTS, get_counter_type_label, normalize_counter_type
-from tkinter import ttk, filedialog
-import tkinter as tk
-from os import path
-from collections import Counter
-from log import Log
+"""Controller helpers for list management, localization, and file selection UI."""
+
 import sys
+from collections import Counter
+from os import path
+
+import tkinter as tk
+from tkinter import filedialog, ttk
+
+from config import TEXTS, get_counter_type_label, normalize_counter_type
+from log import Log
 
 
 class WidgetController:
+    """Keep widget references and implement non-layout UI behavior."""
+
     def __init__(self, state):
+        """Store shared application state and placeholders for Tk widgets."""
         self.state = state
         self.app_title_label = None
         self.app_subtitle_label = None
@@ -41,6 +48,7 @@ class WidgetController:
         self.open_log_button = None
 
     def select_files(self, file_listbox, part1_entry):
+        """Load files from the file picker and refresh the list and prefix."""
         selected_files = filedialog.askopenfilenames(title="Vyber soubory")
 
         if selected_files:
@@ -49,6 +57,7 @@ class WidgetController:
             self.prepopulate_entry(selected_files, part1_entry)
 
     def parse_drop_data(self, drop_data, splitlist):
+        """Normalize TkDND payloads into a plain list of file paths."""
         if not drop_data:
             return []
 
@@ -58,6 +67,7 @@ class WidgetController:
             return [drop_data]
 
     def add_dropped_files(self, dropped_files, part1_entry):
+        """Append unique dropped files while keeping the current order intact."""
         merged_files = list(self.state.selected_files)
         known_files = {path.normcase(path.abspath(file_path)) for file_path in merged_files}
 
@@ -77,19 +87,19 @@ class WidgetController:
         self.prepopulate_entry(merged_files, part1_entry)
 
     def handle_file_drop(self, event, part1_entry):
+        """Process a drop event and stop Tk from handling it again."""
         dropped_files = self.parse_drop_data(event.data, self.file_listbox.tk.splitlist)
         self.add_dropped_files(dropped_files, part1_entry)
         return "break"
 
-    # Function for prepopulate entry
     def prepopulate_entry(self, file_list, part1_entry):
+        """Fill the base-name entry with the best shared prefix guess."""
         common_prefix = self.get_common_prefix(file_list)
         part1_entry.delete(0, tk.END)
         part1_entry.insert(0, common_prefix)
 
-    # Function for updating and displaying selected files into the filebox
-
     def update_file_listbox(self, file_list, selected_indices=None):
+        """Refresh the visible listbox and optionally restore selection."""
         self.file_listbox.delete(0, tk.END)
         self.state.selected_files = list(file_list)
         for label in self.build_display_labels(self.state.selected_files):
@@ -100,6 +110,7 @@ class WidgetController:
                 self.file_listbox.select_set(index)
 
     def build_display_labels(self, file_list):
+        """Build listbox labels that disambiguate duplicate basenames."""
         basenames = [path.basename(file_path) for file_path in file_list]
         basename_counts = Counter(basenames)
         labels = []
@@ -115,8 +126,8 @@ class WidgetController:
 
         return labels
 
-    # Short function for getting the common name of all selected files
     def get_common_prefix(self, file_list):
+        """Return a usable shared basename prefix for the current file set."""
         if not file_list:
             return ""
 
@@ -129,17 +140,16 @@ class WidgetController:
             return prefix
 
         else:
-            # If there is no common prefix return the first selected file name
             return base_names[0]
 
-    # Removing all files from selection box and clearing the common prefix
     def remove_all_files(self, part1_entry):
+        """Clear the current selection and reset the base-name entry."""
         self.state.selected_files = []
         self.file_listbox.delete(0, tk.END)
         part1_entry.delete(0, tk.END)
 
-    # Remove selected files
     def remove_selected(self, file_listbox, part1_entry):
+        """Remove the selected rows from the current file list."""
         selected_indices = set(file_listbox.curselection())
 
         if not selected_indices:
@@ -153,8 +163,8 @@ class WidgetController:
         if not self.state.selected_files:
             part1_entry.delete(0, tk.END)
 
-    # Move selected files one up
     def move_up(self):
+        """Move selected items one row upward without breaking their order."""
         selected_indices = list(self.file_listbox.curselection())
         if not selected_indices:
             return
@@ -172,8 +182,8 @@ class WidgetController:
 
         self.update_file_listbox(items, new_selection)
 
-    # Moving selected files one down
     def move_down(self):
+        """Move selected items one row downward without breaking their order."""
         selected_indices = list(self.file_listbox.curselection())
         if not selected_indices:
             return
@@ -191,8 +201,8 @@ class WidgetController:
 
         self.update_file_listbox(items, sorted(new_selection))
 
-    # Moving selected top
     def move_to_top(self):
+        """Move selected files to the top while preserving relative order."""
         selected_indices = list(self.file_listbox.curselection())
         if not selected_indices:
             return
@@ -206,8 +216,8 @@ class WidgetController:
         new_selection = list(range(len(selected_files)))
         self.update_file_listbox(updated_files, new_selection)
 
-    # Moving selected files one bottom
     def move_to_bottom(self):
+        """Move selected files to the bottom while preserving relative order."""
         selected_indices = list(self.file_listbox.curselection())
         if not selected_indices:
             return
@@ -222,6 +232,7 @@ class WidgetController:
         self.update_file_listbox(updated_files, new_selection)
 
     def flip_order(self):
+        """Reverse the visible file order and mirror the current selection."""
         items = list(self.state.selected_files)
         if not items:
             return
@@ -231,8 +242,8 @@ class WidgetController:
         new_selection = sorted((len(items) - 1 - index) for index in selected_indices)
         self.update_file_listbox(reversed_items, new_selection)
 
-    # Language toggle button
     def toggle_language(self):
+        """Switch the UI language and refresh all localized widget labels."""
         if self.state.current_lang == 'CZ':
             self.state.current_lang = 'EN'
             self.toggle_button.config(text='CZ')
@@ -244,8 +255,8 @@ class WidgetController:
 
         self.update_texts()
 
-    # List and map of widgets
     def update_texts(self):
+        """Apply the currently selected language to all registered widgets."""
         current_counter_kind = normalize_counter_type(self.counter_type.get()) or 'numbers'
         current_texts = TEXTS[self.state.current_lang]
 
@@ -294,13 +305,13 @@ class WidgetController:
             else:
                 widget.config(text=current_texts[text_key])
 
-    # Create main instance of Log wiever and rechecks if everything exist / solve problems.
     def open_log_viewer(self):
+        """Ensure the log exists and then open the log viewer window."""
         log = Log()
-        log.checklog()  # Recheck of log folder and files / fixes if they do not.
-        log.create_ui()  # Create main window UI
+        log.checklog()
+        log.create_ui()
 
-    # This is called on end of the main window to close all the remaining windows and application.
     def on_closing(self, root):
+        """Close the Tk root window and terminate the process cleanly."""
         root.destroy()
         sys.exit()

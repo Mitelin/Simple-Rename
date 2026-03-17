@@ -198,3 +198,7 @@ Aplikace zapisuje běh do denního log souboru ve složce `log/`.
 - bohatší historie undo operací
 - potvrzovací dialog před rollbackem
 - detailnější log viewer a export logu
+
+## Licence
+
+Projekt je zveřejněný pod [The Unlicense](LICENSE).

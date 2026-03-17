@@ -1,3 +1,5 @@
+"""Tkinter window composition and high-level app actions."""
+
 from tkinter import ttk
 import tkinter as tk
 from tkinter import font as tkfont
@@ -13,12 +15,11 @@ from config import APP_NAME, APP_VERSION, AppState, TEXTS
 from rename_logic import CollisionError, RenameError, RenameService, ValidationError
 from widget_logic import WidgetController
 
-# # This is for app dev precision widget moving
-# def display_coordinates(event):
-#     x, y = event.x, event.y
-#     print(f"Clicked at coordinates: ({x}, {y})")
 class Tooltip:
+    """Display a small hover tooltip next to a widget."""
+
     def __init__(self, widget, text, *, wraplength=260):
+        """Bind a tooltip window to the given widget."""
         self.widget = widget
         self.text = text
         self.wraplength = wraplength
@@ -29,12 +30,14 @@ class Tooltip:
         self.widget.bind("<ButtonPress>", self.hide)
 
     def update_text(self, text):
+        """Replace the tooltip content and refresh an already open tooltip."""
         self.text = text
         if self.tooltip_window is not None:
             label = self.tooltip_window.winfo_children()[0]
             label.config(text=text)
 
     def show(self, _event=None):
+        """Create and show the tooltip window if it is not visible yet."""
         if self.tooltip_window is not None:
             return
 
@@ -61,6 +64,7 @@ class Tooltip:
         label.pack()
 
     def hide(self, _event=None):
+        """Destroy the tooltip window if it is currently visible."""
         if self.tooltip_window is None:
             return
 
@@ -69,6 +73,8 @@ class Tooltip:
 
 
 class Window:
+    """Build the main UI and coordinate rename and undo actions."""
+
     WINDOW_WIDTH = 1040
     WINDOW_HEIGHT = 770
     CONTENT_WIDTH = 984
@@ -103,6 +109,7 @@ class Window:
     }
 
     def __init__(self):
+        """Create shared state, services, and widget controller objects."""
         self.state = AppState()
         self.rename_service = RenameService()
         self.widgets = WidgetController(self.state)
@@ -110,6 +117,7 @@ class Window:
         self.last_rename_operation = []
 
     def _register_drop_target(self, widget):
+        """Register a widget as a file drop target when TkDND is available."""
         if DND_FILES is None:
             return False
 
@@ -125,6 +133,7 @@ class Window:
         return True
 
     def _configure_styles(self, root):
+        """Create the ttk styles used by the application."""
         colors = self.PALETTE
         root.configure(bg=colors["app_bg"])
 
@@ -253,6 +262,7 @@ class Window:
         )
 
     def _build_header(self, root):
+        """Create the top application header with title and quick actions."""
         header = ttk.Frame(root, style="App.TFrame", padding=(28, 24, 28, 16))
         header.grid(row=0, column=0, sticky="ew")
         header.columnconfigure(0, weight=1)
@@ -294,6 +304,7 @@ class Window:
         self.widgets.toggle_button.grid(row=0, column=1)
 
     def _build_file_panel(self, parent):
+        """Create the left panel with the file list and ordering controls."""
         colors = self.PALETTE
         file_panel = ttk.Frame(
             parent,
@@ -405,6 +416,7 @@ class Window:
         self.widgets.remove_all_button.grid(row=0, column=2, sticky="ew", padx=(8, 0))
 
     def _build_settings_panel(self, parent):
+        """Create the right panel with rename settings and usage hints."""
         side_panel = ttk.Frame(
             parent,
             style="App.TFrame",
@@ -514,6 +526,7 @@ class Window:
         self.widgets.tips_line_3_label.grid(row=3, column=0, sticky="w", pady=(6, 0))
 
     def rename_and_refresh(self):
+        """Run the rename service and reflect the result back into the UI."""
         try:
             result = self.rename_service.rename_files(
                 self.widgets.part1_entry.get(),
@@ -537,6 +550,7 @@ class Window:
         print(success_message)
 
     def undo_last_rename(self):
+        """Attempt to restore the last successful batch rename."""
         if not self.last_rename_operation:
             messagebox.showinfo(
                 self._current_texts()["undo_nothing_title"],
@@ -575,9 +589,11 @@ class Window:
         messagebox.showwarning(self._current_texts()["undo_partial_title"], partial_message)
 
     def _current_texts(self):
+        """Return the currently active localization dictionary."""
         return TEXTS[self.state.current_lang]
 
     def _set_undo_button_enabled(self, enabled):
+        """Enable or disable the undo button if it has been created."""
         if self.widgets.undo_button is None:
             return
 
@@ -587,6 +603,7 @@ class Window:
             self.widgets.undo_button.state(["disabled"])
 
     def _format_result_details(self, messages):
+        """Limit verbose rollback warnings to a short readable preview."""
         if not messages:
             return ""
 
@@ -597,6 +614,7 @@ class Window:
         return details
 
     def create_main_window(self):
+        """Create the Tk root window, build the layout, and enter the event loop."""
         root = TkinterDnD.Tk() if TkinterDnD is not None else tk.Tk()
         root.title(f"{APP_NAME} {APP_VERSION}")
 
