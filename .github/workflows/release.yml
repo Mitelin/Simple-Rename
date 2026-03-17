@@ -1,0 +1,100 @@
+name: Release Assets
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pyinstaller
+
+      - name: Build Windows package
+        run: |
+          python -m PyInstaller --noconfirm --clean --windowed --name "Simple-Rename" --collect-all tkinterdnd2 main.py
+
+      - name: Archive Windows package
+        shell: pwsh
+        run: |
+          Compress-Archive -Path dist/Simple-Rename/* -DestinationPath Simple-Rename-windows-x64.zip
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: Simple-Rename-windows-x64.zip
+
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Tk runtime for build
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-tk
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pyinstaller
+
+      - name: Build Linux package
+        run: |
+          python -m PyInstaller --noconfirm --clean --windowed --name "simple-rename" --collect-all tkinterdnd2 main.py
+
+      - name: Archive Linux package
+        run: |
+          tar -C dist -czf simple-rename-linux-x64.tar.gz simple-rename
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-build
+          path: simple-rename-linux-x64.tar.gz
+
+  publish-release:
+    needs:
+      - build-windows
+      - build-linux
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+
+      - name: Publish GitHub release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            release-assets/windows-build/Simple-Rename-windows-x64.zip
+            release-assets/linux-build/simple-rename-linux-x64.tar.gz

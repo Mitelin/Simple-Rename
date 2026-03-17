@@ -136,6 +136,29 @@ Aktuální testy pokrývají hlavně:
 - drag-and-drop parsing
 - základní UI layout a stav tlačítek
 
+## Release buildy
+
+Pro GitHub release assety je v projektu připravený workflow v [.github/workflows/release.yml](.github/workflows/release.yml).
+
+- Po pushi tagu ve formátu `v1.0.0` workflow automaticky sestaví:
+    - `Simple-Rename-windows-x64.zip`
+    - `simple-rename-linux-x64.tar.gz`
+- Tyto soubory se přiloží ke GitHub Release jako assety.
+- GitHub zároveň automaticky přidává i zdrojové archivy `Source code (zip)` a `Source code (tar.gz)`.
+
+Příklad vydání nové verze:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+Pokud chceš release build otestovat lokálně na Windows, funguje tento příkaz:
+
+```bash
+python -m PyInstaller --noconfirm --clean --windowed --name "Simple-Rename" --collect-all tkinterdnd2 main.py
+```
+
 ## Struktura projektu
 
 - `main.py` - vstupní bod aplikace, inicializace logování a spuštění okna
